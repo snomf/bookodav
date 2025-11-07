@@ -50,11 +50,12 @@
                 <table>
                     <thead>
                         <tr>
-                            <th scope="row">File Name</th>
-                            <th scope="row">Size</th>
-                            <th scope="row">Last Modified</th>
-                            <th scope="row">Download</th>
-                            <th scope="row">Delete</th>
+                            <th scope="col">File Name</th>
+                            <th scope="col">Size</th>
+                            <th scope="col">Last Modified</th>
+                            <th scope="col">Download</th>
+                            <th scope="col">Delete</th>
+                            <th scope="col">View</th>
                         </tr>
                     </thead>
                     <tbody id="fileList">
@@ -93,18 +94,22 @@
                         const row = document.createElement('tr');
                         console.log("hrefhrefhrefhrefhrefhrefhrefhref",href);
                         
+                        const fileName = decodeURIComponent(href.split('/').pop());
+                        const viewButton = getFileViewButton(fileName, href);
+
                         row.innerHTML = `
-                            <td>${decodeURIComponent(href.split('/').pop())}</td>
+                            <td>${fileName}</td>
                             <td>${formatBytes(size)}</td>
                             <td>${new Date(lastModified).toLocaleString()}</td>
                             <td><a href="${href}" download>Download</a></td>
                             <td><button onclick="deleteFile('${href}')">Delete</button></td>
+                            <td>${viewButton}</td>
                         `;
                         fileList.appendChild(row);
                     });
                 } catch (error) {
                     console.error('Error loading file list:', error);
-                    document.getElementById('fileList').innerHTML = `<tr><td colspan="5">Failed to load file list.</td></tr>`;
+                    document.getElementById('fileList').innerHTML = `<tr><td colspan="6">Failed to load file list.</td></tr>`;
                 }
             }
 
@@ -117,6 +122,15 @@
                 const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
                 const i = Math.floor(Math.log(bytes) / Math.log(k));
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            function getFileViewButton(fileName, href) {
+                const extension = fileName.split('.').pop().toLowerCase();
+                const viewableTypes = ['html', 'pdf', 'epub'];
+                if (viewableTypes.includes(extension)) {
+                    return `<button onclick="viewFile('${href}')">👁️</button>`;
+                }
+                return '';
             }
 
             async function dumpCache(){
@@ -153,6 +167,10 @@
 
             // Load the file list when the page loads
             window.onload = loadFileList;
+
+            function viewFile(filePath) {
+                window.open(filePath, '_blank');
+            }
         </script>
         <footer class="footer">
             <span>
