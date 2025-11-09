@@ -6,6 +6,16 @@ export const mimeTypes = {
 	cbr: "application/x-cbr", // Comic Book RAR
 	cbz: "application/x-cbz", // Comic Book ZIP
 	html: "text/html",
+	djvu: "image/vnd.djvu",
+	xps: "application/vnd.ms-xpsdocument",
+	cbt: "application/x-cbt",
+	fb2: "application/x-fb2",
+	pdb: "application/vnd.palm",
+	txt: "text/plain",
+	rtf: "application/rtf",
+	chm: "application/vnd.ms-htmlhelp",
+	doc: "application/msword",
+	zip: "application/zip",
 
 	// Images
 	jpg: "image/jpeg",
