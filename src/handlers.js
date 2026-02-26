@@ -1,9 +1,17 @@
 import { corsHeaders, mimeTypes } from './utils'
 
+function getDavPath(pathname) {
+    let path = decodeURIComponent(pathname);
+    if (path === "/dav" || path.startsWith("/dav/")) {
+        path = path.slice(4);
+    }
+    return path.replace(/^\/+/, "");
+}
+
 export async function handleDeleteFile(request, env, ctx) {
     const url = new URL(request.url);
+    const filePath = getDavPath(url.pathname);
 
-    const filePath = decodeURIComponent(url.pathname.slice(1)); // Remove leading slash
     if (filePath.includes("..")) {
         return new Response("Invalid path", { status: 400 });
     }
@@ -64,19 +72,9 @@ export async function handleMultpleUploads(request, env, ctx) {
 }
 
 export async function handleGetFile(request, env) {
-    let path = new URL(request.url).pathname;
-    const filename = decodeURIComponent(path.slice(1));
-    if(path === '/'){
-        path = '/dav'
-        return new Response(handleUiRouting(path), {
-            status:301,
-            headers: {
-                "Content-Type": "text/html",
-                "Cache-Control": "public, max-age=604800"
-            },
-        });
+    const url = new URL(request.url);
+    const filename = getDavPath(url.pathname);
 
-    }
     const file = await env.MY_BUCKET.get(filename);
 
     if (file === null) {
@@ -97,13 +95,15 @@ export async function handleGetFile(request, env) {
 
 export async function handlePutFile(request, env, ctx) {
     const url = new URL(request.url);
-    let filePath = decodeURIComponent(url.pathname);
+    const filePath = getDavPath(url.pathname);
 
     if (filePath.includes("..") || filePath.trim() === "") {
+        // If it's a directory (trailing slash), just return success
+        if (url.pathname.endsWith('/')) {
+            return new Response("Directory created", { status: 201, headers: corsHeaders });
+        }
         return new Response("Invalid path", { status: 400 });
     }
-
-    filePath = filePath.replace(/^\/+/, ""); // Remove all leading slashes
 
     try {
         // Read the file data from the request body
@@ -128,69 +128,84 @@ export async function handlePutFile(request, env, ctx) {
 }
 
 export async function handleFileList(request, env, ctx) {
-    // Handle directory listing (WebDAV-specific)
-    const path = new URL(request.url).pathname;
-    const prefix = path === "/" ? "" : path.slice(1); // Handle root path
+    const url = new URL(request.url);
+    const path = url.pathname;
+    let davPath = getDavPath(path);
 
-    const bypassCache = true //request.headers.get("X-Bypass-Cache") === "true";
-    const cache = caches.default;
-    const cacheKey = new Request(request.url, { cf: { cacheTtl: 604800 } });
-
-    if (!bypassCache) {
-        const cachedResponse = await cache.match(cacheKey);
-        if (cachedResponse) {
-            console.log(`HIT`);
-            return cachedResponse;
-        }
-
+    // If listing a directory, ensure prefix ends with /
+    let prefix = davPath;
+    if (prefix && !prefix.endsWith('/')) {
+        prefix += '/';
     }
-    console.log("MISS");
-    // List objects in R2 with the correct prefix
-    const objects = await env.MY_BUCKET.list({ prefix });
-    console.log(objects);
+
+    // List objects in R2 with the correct prefix and delimiter for directory behavior
+    const objects = await env.MY_BUCKET.list({ prefix, delimiter: '/' });
     
+    // Normalize path for hrefs
+    const normalizedPath = path.endsWith('/') ? path : path + '/';
+
     // Generate WebDAV XML response
-    const xmlResponse = `
+    let xmlResponse = `<?xml version="1.0" encoding="utf-8" ?>
       <D:multistatus xmlns:D="DAV:">
         <D:response>
           <D:href>${path}</D:href>
           <D:propstat>
             <D:prop>
               <D:resourcetype><D:collection/></D:resourcetype>
-              <D:displayname>${path === "/" ? "root" : path.split("/").pop()}</D:displayname>
+              <D:displayname>${davPath === "" ? "root" : davPath.split("/").filter(Boolean).pop()}</D:displayname>
             </D:prop>
             <D:status>HTTP/1.1 200 OK</D:status>
           </D:propstat>
-        </D:response>
-        ${objects.objects
-            .map(
-                (obj) => `
+        </D:response>`;
+
+    // Add folders (delimited prefixes)
+    if (objects.delimitedPrefixes) {
+        for (const folder of objects.delimitedPrefixes) {
+            const folderName = folder.slice(prefix.length, -1);
+            xmlResponse += `
               <D:response>
-                <D:href>/${encodeURIComponent(obj.key)}</D:href>
+                <D:href>${normalizedPath}${encodeURIComponent(folderName)}/</D:href>
                 <D:propstat>
                   <D:prop>
-                    <D:resourcetype/> <!-- Empty for files -->
-                    <D:getcontentlength>${obj.size}</D:getcontentlength>
-                    <D:getlastmodified>${new Date(obj.uploaded).toUTCString()}</D:getlastmodified>
+                    <D:resourcetype><D:collection/></D:resourcetype>
+                    <D:displayname>${folderName}</D:displayname>
                   </D:prop>
                   <D:status>HTTP/1.1 200 OK</D:status>
                 </D:propstat>
-              </D:response>
-            `
-            )
-            .join("")}
-      </D:multistatus>
-    `;
+              </D:response>`;
+        }
+    }
 
-    const response = new Response(xmlResponse, {
+    // Add files
+    for (const obj of objects.objects) {
+        // Skip the directory itself if it's returned as an object
+        if (obj.key === prefix) continue;
+
+        const fileName = obj.key.slice(prefix.length);
+        if (!fileName) continue;
+
+        xmlResponse += `
+          <D:response>
+            <D:href>${normalizedPath}${encodeURIComponent(fileName)}</D:href>
+            <D:propstat>
+              <D:prop>
+                <D:resourcetype/>
+                <D:getcontentlength>${obj.size}</D:getcontentlength>
+                <D:getlastmodified>${new Date(obj.uploaded).toUTCString()}</D:getlastmodified>
+              </D:prop>
+              <D:status>HTTP/1.1 200 OK</D:status>
+            </D:propstat>
+          </D:response>`;
+    }
+
+    xmlResponse += `</D:multistatus>`;
+
+    return new Response(xmlResponse, {
         headers: {
             ...corsHeaders,
-            "Content-Type": "application/xml",
-         //   "Cache-Control": "public, max-age=604800"
+            "Content-Type": "application/xml; charset=utf-8",
         },
     });
-  //  ctx.waitUntil(cache.put(cacheKey, response.clone()));
-    return response;
 }
 
 export async function dumpCache(request, env, ctx){
