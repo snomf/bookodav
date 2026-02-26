@@ -16,6 +16,7 @@ export const mimeTypes = {
 	chm: "application/vnd.ms-htmlhelp",
 	doc: "application/msword",
 	zip: "application/zip",
+	json: "application/json",
 
 	// Images
 	jpg: "image/jpeg",
@@ -30,7 +31,7 @@ export const mimeTypes = {
 
 export const corsHeaders = {
 	"Access-Control-Allow-Origin": "*",
-	"Access-Control-Allow-Methods": "PUT, GET, PROPFIND, OPTIONS",
+	"Access-Control-Allow-Methods": "PUT, GET, PROPFIND, OPTIONS, DELETE, MKCOL",
 	"Access-Control-Allow-Headers": "Authorization, Depth, Content-Type",
 };
 
