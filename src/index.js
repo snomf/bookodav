@@ -20,14 +20,24 @@ export default {
 			return new Response(null, { headers: corsHeaders });
 		}
 
-		// Serve the SPA UI for root and other UI routes
-		if (request.method === "GET" && !path.startsWith("/dav") && path !== "/dumpcache") {
-			return new Response(html, {
-				headers: {
-					"Content-Type": "text/html",
-					"Cache-Control": "public, max-age=604800"
-				},
-			});
+		// Serve the SPA UI for root and legacy UI routes
+		if (request.method === "GET") {
+			const accept = request.headers.get("Accept") || "";
+			const isBrowser = accept.includes("text/html");
+			const normalizedPath = path.replace(/\/$/, "");
+
+			// Paths that should ALWAYS serve the UI
+			const forceUiPaths = ["", "/dav/list", "/dav/upload", "/dav/wiki"];
+
+			if (forceUiPaths.includes(normalizedPath) || (normalizedPath === "/dav" && isBrowser)) {
+				return new Response(html, {
+					headers: {
+						"Content-Type": "text/html",
+						"Cache-Control": "public, max-age=604800",
+						...corsHeaders
+					},
+				});
+			}
 		}
 
 		// Extract the Authorization header for WebDAV routes

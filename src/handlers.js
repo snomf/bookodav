@@ -75,13 +75,10 @@ export async function handleGetFile(request, env) {
     const url = new URL(request.url);
     const filename = getDavPath(url.pathname);
 
-<<<<<<< update-ui-features-webdav-11702880901149748236
     if (!filename || url.pathname.endsWith('/')) {
         return new Response("Not a file", { status: 404, headers: corsHeaders });
     }
 
-=======
->>>>>>> master
     const file = await env.MY_BUCKET.get(filename);
 
     if (file === null) {
