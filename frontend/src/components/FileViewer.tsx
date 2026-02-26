@@ -18,6 +18,7 @@ interface FileViewerProps {
   getFileBlob: (path: string) => Promise<Blob | null>;
   categories: Category[];
   onAssignCategory: (filePath: string, categoryId: string) => void;
+  storedMetadata?: BookMetadata;
 }
 
 function getCategoryIcon(cat: FileFilter) {
@@ -43,6 +44,7 @@ export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCat
   const [currentComicPage, setCurrentComicPage] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [showCategories, setShowCategories] = useState(false);
+  const [viewMode, setViewMode] = useState<'view' | 'code'>('view');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const ext = getFileExtension(file.name);
@@ -203,11 +205,11 @@ export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCat
           </span>
           <div className="min-w-0">
             <h2 className="text-xs font-semibold text-white truncate">
-              {epubMetadata?.title || meta.title || file.name}
+              {epubMetadata?.title || storedMetadata?.title || meta.title || file.name}
             </h2>
             <div className="flex items-center gap-2 text-[10px] text-slate-500">
-              {(epubMetadata?.creator || meta.author) && <span>{epubMetadata?.creator || meta.author}</span>}
-              {(epubMetadata?.creator || meta.author) && <span>·</span>}
+              {(epubMetadata?.creator || storedMetadata?.author || meta.author) && <span>{epubMetadata?.creator || storedMetadata?.author || meta.author}</span>}
+              {(epubMetadata?.creator || storedMetadata?.author || meta.author) && <span>·</span>}
               <span>{formatFileSize(file.size)}</span>
               <span>·</span>
               <span>{formatDate(file.lastModified)}</span>
@@ -241,6 +243,19 @@ export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCat
               </button>
               <div className="w-px h-4 bg-slate-700 mx-1" />
             </>
+          )}
+
+          {(isHtml || ext === '.md') && (
+            <div className="flex items-center bg-slate-800 rounded-xl p-1 border border-slate-700 mr-2 shadow-inner">
+              <button onClick={() => setViewMode('view')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'view' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>
+                VIEW
+              </button>
+              <button onClick={() => setViewMode('code')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'code' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>
+                CODE
+              </button>
+            </div>
           )}
 
           <div className="relative">
@@ -299,10 +314,10 @@ export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCat
               className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-transform duration-200"
               style={{ transform: `scale(${zoom})` }} draggable={false} />
           </div>
-        ) : isHtml && textContent ? (
+        ) : isHtml && textContent && viewMode === 'view' ? (
           <iframe srcDoc={textContent} className="w-full h-full rounded-xl border border-slate-800/50 bg-white"
             title={file.name} sandbox="allow-same-origin" />
-        ) : isText && textContent !== null ? (
+        ) : (isText || (isHtml && viewMode === 'code')) && textContent !== null ? (
           <div className="w-full max-w-4xl h-full overflow-auto">
             <pre className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800/50 text-sm text-slate-300 font-mono whitespace-pre-wrap break-words leading-relaxed">
               {textContent}
@@ -369,8 +384,12 @@ export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCat
                 {fmt.label}
               </span>
               <CategoryIcon size={36} style={{ color: fmt.color }} className="mb-3 opacity-60" />
-              <p className="text-sm font-semibold text-white px-4 line-clamp-2">{meta.title || file.name}</p>
-              {meta.author && <p className="text-[10px] text-slate-400 mt-1 px-4">{meta.author}</p>}
+              <p className="text-sm font-semibold text-white px-4 line-clamp-2">
+                {storedMetadata?.title || meta.title || file.name}
+              </p>
+              {(storedMetadata?.author || meta.author) && (
+                <p className="text-[10px] text-slate-400 mt-1 px-4">{storedMetadata?.author || meta.author}</p>
+              )}
             </div>
 
             {/* File info grid */}

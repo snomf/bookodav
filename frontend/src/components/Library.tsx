@@ -5,6 +5,7 @@ import {
   Tag, Eye, RefreshCw, Loader2, AlertCircle,
   ArrowUpDown, X, CheckCircle, BookMarked, Archive
 } from 'lucide-react';
+import { BookPreview } from './BookPreview';
 import {
   WebDAVFile, Category, ViewMode, FileFilter, SortBy, SortOrder,
   getFileCategory, formatFileSize, formatDate, getFileExtension,
@@ -28,10 +29,14 @@ interface LibraryProps {
   onFileSelect: (file: WebDAVFile) => void;
   onUpload: (file: File) => void;
   onDelete: (path: string) => void;
+  onDeleteMultiple: (paths: string[]) => void;
   onNavigateUp: () => void;
   onCreateDirectory: (name: string) => void;
   onAssignCategory: (filePath: string, categoryId: string) => void;
   onRefresh: () => void;
+  getFileBlob: (path: string) => Promise<Blob | null>;
+  fileMetadata: Record<string, BookMetadata>;
+  onUpdateMetadata: (href: string, meta: BookMetadata) => void;
 }
 
 function getFileCategoryIcon(cat: FileFilter) {
@@ -58,8 +63,8 @@ const FILTER_TABS: { id: FileFilter; label: string; icon: typeof File }[] = [
 export function Library({
   files, loading, error, currentPath, viewMode, searchQuery, fileFilter,
   categories, uploading, uploadProgress, onViewModeChange, onSearchChange,
-  onFilterChange, onFileSelect, onUpload, onDelete, onNavigateUp,
-  onCreateDirectory, onAssignCategory, onRefresh,
+  onFilterChange, onFileSelect, onUpload, onDelete, onDeleteMultiple, onNavigateUp,
+  onCreateDirectory, onAssignCategory, onRefresh, getFileBlob, fileMetadata, onUpdateMetadata
 }: LibraryProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -69,6 +74,7 @@ export function Library({
   const [sortBy, setSortBy] = useState<SortBy>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [showCategoryMenu, setShowCategoryMenu] = useState<string | null>(null);
+  const [selectedHrefs, setSelectedHrefs] = useState<string[]>([]);
 
   // Filter and sort files
   const filteredFiles = files
@@ -151,6 +157,21 @@ export function Library({
     return categories.filter(c => c.files.includes(filePath));
   };
 
+  const handleToggleSelect = (href: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedHrefs(prev =>
+      prev.includes(href) ? prev.filter(h => h !== href) : [...prev, href]
+    );
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedHrefs.length === 0) return;
+    if (confirm(`Delete ${selectedHrefs.length} selected item(s)?`)) {
+      onDeleteMultiple(selectedHrefs);
+      setSelectedHrefs([]);
+    }
+  };
+
   return (
     <div
       className="h-full flex flex-col overflow-hidden relative"
@@ -206,6 +227,13 @@ export function Library({
               className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all" title="New Folder">
               <FolderPlus size={15} />
             </button>
+            {selectedHrefs.length > 0 && (
+              <button onClick={handleDeleteSelected}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20 hover:bg-red-500/20 transition-all animate-scale-in">
+                <Trash2 size={14} />
+                <span>Delete ({selectedHrefs.length})</span>
+              </button>
+            )}
             <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
               className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold shadow-lg shadow-amber-500/15 hover:shadow-amber-500/25 disabled:opacity-50 transition-all">
               {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
@@ -351,14 +379,21 @@ export function Library({
             )}
 
             {filteredFiles.map((file, i) => {
+              const isSelected = selectedHrefs.includes(file.href);
               if (file.isDirectory) {
                 return (
                   <div
                     key={file.href + i}
-                    className="group flex flex-col items-center gap-2 p-4 rounded-2xl border border-slate-800/40 hover:border-amber-500/20 bg-slate-800/20 hover:bg-slate-800/40 cursor-pointer transition-all duration-200 animate-fade-in"
+                    className={`group flex flex-col items-center gap-2 p-4 rounded-2xl border cursor-pointer transition-all duration-200 animate-fade-in ${
+                      isSelected ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-800/40 hover:border-amber-500/20 bg-slate-800/20 hover:bg-slate-800/40'
+                    }`}
                     style={{ animationDelay: `${i * 20}ms` }}
                     onClick={() => onFileSelect(file)}
                   >
+                    <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <input type="checkbox" checked={isSelected} onChange={() => handleToggleSelect(file.href)}
+                         onClick={e => e.stopPropagation()} className="accent-amber-500" />
+                    </div>
                     <div className="w-11 h-11 rounded-xl bg-amber-500/10 flex items-center justify-center transition-all group-hover:scale-110">
                       <Folder size={22} className="text-amber-400" />
                     </div>
@@ -379,14 +414,21 @@ export function Library({
                 <div
                   key={file.href + i}
                   className={`book-card group relative flex flex-col rounded-2xl border cursor-pointer transition-all duration-200 animate-fade-in overflow-hidden ${
-                    isBook
+                    isSelected ? 'border-amber-500/50 ring-1 ring-amber-500/50' : ''
+                  } ${
+                    isBook && !isSelected
                       ? 'border-slate-800/40 hover:border-slate-600/50 bg-gradient-to-br ' + fmt.gradient
-                      : 'border-slate-800/40 hover:border-slate-700/50 bg-slate-800/20 hover:bg-slate-800/40'
+                      : isSelected ? 'bg-amber-500/5' : 'border-slate-800/40 hover:border-slate-700/50 bg-slate-800/20 hover:bg-slate-800/40'
                   }`}
                   style={{ animationDelay: `${i * 20}ms` }}
                   onClick={() => onFileSelect(file)}
                   onContextMenu={(e) => { e.preventDefault(); setContextMenu({ file, x: e.clientX, y: e.clientY }); }}
                 >
+                  {/* Selection checkbox */}
+                  <div className={`absolute top-2 left-3 z-10 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                    <input type="checkbox" checked={isSelected} onChange={() => handleToggleSelect(file.href)}
+                      onClick={e => e.stopPropagation()} className="w-3.5 h-3.5 accent-amber-500" />
+                  </div>
                   {/* Book spine accent */}
                   {isBook && (
                     <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ backgroundColor: fmt.color + '80' }} />
@@ -410,18 +452,29 @@ export function Library({
                   </button>
 
                   {/* Card content */}
-                  <div className={`flex flex-col items-center gap-1.5 p-4 ${isBook ? 'pt-5 pb-3' : 'py-4'}`}>
+                  <div className={`flex flex-col items-center gap-1.5 p-4 ${isBook ? 'pt-5 pb-3' : 'py-4'} h-full`}>
                     {/* Format badge */}
-                    <span className="format-badge" style={{ backgroundColor: fmt.bgColor, color: fmt.color }}>
+                    <span className="format-badge z-10" style={{ backgroundColor: fmt.bgColor, color: fmt.color }}>
                       {fmt.label}
                     </span>
 
-                    {/* Icon */}
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center my-1" style={{ backgroundColor: fmt.bgColor }}>
-                      {(() => {
-                        const Icon = getFileCategoryIcon(getFileCategory(file.name));
-                        return <Icon size={20} style={{ color: fmt.color }} />;
-                      })()}
+                    {/* Icon / Preview */}
+                    <div className={`rounded shadow-sm overflow-hidden flex items-center justify-center my-1 transition-all ${isBook ? 'w-full flex-1 min-h-[120px]' : 'w-10 h-10'}`}
+                      style={{ backgroundColor: fmt.bgColor }}>
+                      {isBook && getFileExtension(file.name) === '.epub' ? (
+                        <BookPreview
+                          href={file.href}
+                          getFileBlob={getFileBlob}
+                          className="w-full h-full object-contain"
+                          storedMetadata={fileMetadata[file.href]}
+                          onMetadataExtracted={(meta) => onUpdateMetadata(file.href, meta)}
+                        />
+                      ) : (
+                        (() => {
+                          const Icon = getFileCategoryIcon(getFileCategory(file.name));
+                          return <Icon size={isBook ? 48 : 20} style={{ color: fmt.color }} />;
+                        })()
+                      )}
                     </div>
 
                     {/* Title */}
@@ -457,11 +510,14 @@ export function Library({
               const isBook = isBookFormat(file.name);
               const meta = isBook ? parseFilenameMetadata(file.name) : null;
               const CatIcon = file.isDirectory ? Folder : getFileCategoryIcon(getFileCategory(file.name));
+              const isSelected = selectedHrefs.includes(file.href);
 
               return (
                 <div
                   key={file.href + i}
-                  className="group flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800/40 cursor-pointer transition-all animate-fade-in"
+                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all animate-fade-in ${
+                    isSelected ? 'bg-amber-500/10' : 'hover:bg-slate-800/40'
+                  }`}
                   style={{ animationDelay: `${i * 10}ms` }}
                   onClick={() => onFileSelect(file)}
                   onContextMenu={(e) => {
@@ -469,10 +525,26 @@ export function Library({
                     if (!file.isDirectory) setContextMenu({ file, x: e.clientX, y: e.clientY });
                   }}
                 >
-                  {/* Icon */}
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  {/* Selection checkbox */}
+                  <div className={`transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                    <input type="checkbox" checked={isSelected} onChange={() => handleToggleSelect(file.href)}
+                      onClick={e => e.stopPropagation()} className="accent-amber-500" />
+                  </div>
+
+                  {/* Icon / Preview */}
+                  <div className="w-8 h-10 rounded overflow-hidden flex items-center justify-center shrink-0"
                     style={{ backgroundColor: file.isDirectory ? 'rgba(251,191,36,0.1)' : fmt.bgColor }}>
-                    <CatIcon size={15} style={{ color: file.isDirectory ? '#fbbf24' : fmt.color }} />
+                    {!file.isDirectory && getFileExtension(file.name) === '.epub' ? (
+                      <BookPreview
+                        href={file.href}
+                        getFileBlob={getFileBlob}
+                        className="w-full h-full"
+                        storedMetadata={fileMetadata[file.href]}
+                        onMetadataExtracted={(meta) => onUpdateMetadata(file.href, meta)}
+                      />
+                    ) : (
+                      <CatIcon size={15} style={{ color: file.isDirectory ? '#fbbf24' : fmt.color }} />
+                    )}
                   </div>
 
                   {/* Info */}

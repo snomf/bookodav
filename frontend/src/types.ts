@@ -11,7 +11,7 @@ export interface BookMetadata {
   title?: string;
   author?: string;
   description?: string;
-  coverUrl?: string;
+  coverUrl?: string; // This will store a base64 encoded cover image
 }
 
 export interface Category {

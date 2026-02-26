@@ -16,6 +16,7 @@ export const mimeTypes = {
 	chm: "application/vnd.ms-htmlhelp",
 	doc: "application/msword",
 	zip: "application/zip",
+	json: "application/json",
 
 	// Images
 	jpg: "image/jpeg",
