@@ -21,15 +21,27 @@ export function App() {
       return DEFAULT_CATEGORIES;
     }
   });
+  const [fileMetadata, setFileMetadata] = useState<Record<string, BookMetadata>>(() => {
+    try {
+      const saved = localStorage.getItem('bookodav-metadata');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [fileFilter, setFileFilter] = useState<FileFilter>('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Save categories to localStorage immediately
+  // Save to localStorage immediately
   useEffect(() => {
     localStorage.setItem('bookodav-categories', JSON.stringify(categories));
   }, [categories]);
+
+  useEffect(() => {
+    localStorage.setItem('bookodav-metadata', JSON.stringify(fileMetadata));
+  }, [fileMetadata]);
 
   // Debounced save to WebDAV
   useEffect(() => {
@@ -39,13 +51,13 @@ export function App() {
       webdav.saveMetadata({
         version: 1,
         categories,
-        fileMetadata: {},
+        fileMetadata,
       });
     }, 3000);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [categories, webdav.connected]);
+  }, [categories, fileMetadata, webdav.connected]);
 
   // Auto-connect + load metadata
   useEffect(() => {
@@ -55,6 +67,9 @@ export function App() {
         webdav.loadMetadata().then(meta => {
           if (meta?.categories && meta.categories.length > 0) {
             setCategories(meta.categories);
+          }
+          if (meta?.fileMetadata) {
+            setFileMetadata(meta.fileMetadata);
           }
         });
       });
@@ -67,6 +82,9 @@ export function App() {
     const meta = await webdav.loadMetadata();
     if (meta?.categories && meta.categories.length > 0) {
       setCategories(meta.categories);
+    }
+    if (meta?.fileMetadata) {
+      setFileMetadata(meta.fileMetadata);
     }
   }, [webdav]);
 
@@ -102,6 +120,14 @@ export function App() {
       }
       return c;
     }));
+  }, []);
+
+  const handleUpdateMetadata = useCallback((href: string, meta: BookMetadata) => {
+    setFileMetadata(prev => {
+      // Only update if metadata is different or missing
+      if (prev[href]?.coverUrl === meta.coverUrl && prev[href]?.title === meta.title) return prev;
+      return { ...prev, [href]: meta };
+    });
   }, []);
 
   const handleNavigateUp = useCallback(() => {
@@ -150,10 +176,14 @@ export function App() {
             onFileSelect={handleFileSelect}
             onUpload={(file) => webdav.uploadFile(file, webdav.currentPath)}
             onDelete={webdav.deleteFile}
+            onDeleteMultiple={webdav.deleteMultipleFiles}
             onNavigateUp={handleNavigateUp}
             onCreateDirectory={(name) => webdav.createDirectory(webdav.currentPath, name)}
             onAssignCategory={handleAssignCategory}
             onRefresh={() => webdav.listFiles(webdav.currentPath)}
+            getFileBlob={webdav.getFileBlob}
+            fileMetadata={fileMetadata}
+            onUpdateMetadata={handleUpdateMetadata}
           />
         ) : view === 'categories' && webdav.connected ? (
           <CategoryView
@@ -176,6 +206,7 @@ export function App() {
           getFileBlob={webdav.getFileBlob}
           categories={categories}
           onAssignCategory={handleAssignCategory}
+          storedMetadata={fileMetadata[selectedFile.href]}
         />
       )}
     </div>
