@@ -37,7 +37,7 @@ KOReader Configuration:
 
 ```yaml
 WebDAV:
-  URL: https://[worker-subdomain].workers.dev
+  URL: https://[worker-subdomain].workers.dev/dav
   Username: [your-username]
   Password: [your-password]
 ```
