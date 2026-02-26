@@ -62,32 +62,29 @@ export function App() {
   // Auto-connect + load metadata
   useEffect(() => {
     if (webdav.config && !webdav.connected && !webdav.loading) {
-      webdav.connect(webdav.config).then(async () => {
+      webdav.connect(webdav.config).then(() => {
         // After connect, try to load metadata from server
-        const meta = await webdav.loadMetadata();
-        if (meta) {
-          if (meta.categories && meta.categories.length > 0) {
+        webdav.loadMetadata().then(meta => {
+          if (meta?.categories && meta.categories.length > 0) {
             setCategories(meta.categories);
           }
-          if (meta.fileMetadata) {
-            setFileMetadata(prev => ({ ...prev, ...meta.fileMetadata }));
+          if (meta?.fileMetadata) {
+            setFileMetadata(meta.fileMetadata);
           }
-        }
+        });
       });
     }
-  }, [webdav.config]);
+  }, []);
 
   const handleConnect = useCallback(async (config: ConnectionConfig) => {
     await webdav.connect(config);
     // Try to load server-side categories
     const meta = await webdav.loadMetadata();
-    if (meta) {
-      if (meta.categories && meta.categories.length > 0) {
-        setCategories(meta.categories);
-      }
-      if (meta.fileMetadata) {
-        setFileMetadata(prev => ({ ...prev, ...meta.fileMetadata }));
-      }
+    if (meta?.categories && meta.categories.length > 0) {
+      setCategories(meta.categories);
+    }
+    if (meta?.fileMetadata) {
+      setFileMetadata(meta.fileMetadata);
     }
   }, [webdav]);
 

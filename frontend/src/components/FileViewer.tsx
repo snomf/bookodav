@@ -32,7 +32,7 @@ function getCategoryIcon(cat: FileFilter) {
   }
 }
 
-export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCategory, storedMetadata }: FileViewerProps) {
+export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCategory }: FileViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -57,7 +57,7 @@ export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCat
 
   const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.bmp'].includes(ext);
   const isPdf = ext === '.pdf';
-  const isText = ['.txt', '.md', '.json', '.xml', '.css', '.js', '.ts', '.csv', '.yaml', '.yml', '.log'].includes(ext);
+  const isText = ['.txt', '.md', '.json', '.xml', '.css', '.js', '.ts', '.csv', '.yaml', '.yml'].includes(ext);
   const isHtml = ['.html', '.htm'].includes(ext);
   const isEpub = ext === '.epub';
   const isCbz = ext === '.cbz';
