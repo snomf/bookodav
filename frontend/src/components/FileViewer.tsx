@@ -43,7 +43,6 @@ export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCat
   const [currentComicPage, setCurrentComicPage] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [showCategories, setShowCategories] = useState(false);
-  const [viewMode, setViewMode] = useState<'view' | 'code'>('view');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const ext = getFileExtension(file.name);
@@ -244,19 +243,6 @@ export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCat
             </>
           )}
 
-          {(isHtml || ext === '.md') && (
-            <div className="flex items-center bg-slate-800/50 rounded-lg p-0.5 border border-slate-700/30 mr-1">
-              <button onClick={() => setViewMode('view')}
-                className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${viewMode === 'view' ? 'bg-amber-500/20 text-amber-400' : 'text-slate-500 hover:text-slate-300'}`}>
-                View
-              </button>
-              <button onClick={() => setViewMode('code')}
-                className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${viewMode === 'code' ? 'bg-amber-500/20 text-amber-400' : 'text-slate-500 hover:text-slate-300'}`}>
-                Code
-              </button>
-            </div>
-          )}
-
           <div className="relative">
             <button onClick={() => setShowCategories(!showCategories)}
               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all" title="Categorize">
@@ -313,10 +299,10 @@ export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCat
               className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-transform duration-200"
               style={{ transform: `scale(${zoom})` }} draggable={false} />
           </div>
-        ) : isHtml && textContent && viewMode === 'view' ? (
+        ) : isHtml && textContent ? (
           <iframe srcDoc={textContent} className="w-full h-full rounded-xl border border-slate-800/50 bg-white"
             title={file.name} sandbox="allow-same-origin" />
-        ) : (isText || (isHtml && viewMode === 'code')) && textContent !== null ? (
+        ) : isText && textContent !== null ? (
           <div className="w-full max-w-4xl h-full overflow-auto">
             <pre className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800/50 text-sm text-slate-300 font-mono whitespace-pre-wrap break-words leading-relaxed">
               {textContent}

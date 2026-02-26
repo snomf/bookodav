@@ -150,12 +150,10 @@ export function App() {
             onFileSelect={handleFileSelect}
             onUpload={(file) => webdav.uploadFile(file, webdav.currentPath)}
             onDelete={webdav.deleteFile}
-            onDeleteMultiple={webdav.deleteMultipleFiles}
             onNavigateUp={handleNavigateUp}
             onCreateDirectory={(name) => webdav.createDirectory(webdav.currentPath, name)}
             onAssignCategory={handleAssignCategory}
             onRefresh={() => webdav.listFiles(webdav.currentPath)}
-            getFileBlob={webdav.getFileBlob}
           />
         ) : view === 'categories' && webdav.connected ? (
           <CategoryView

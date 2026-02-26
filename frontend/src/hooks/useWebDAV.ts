@@ -246,38 +246,6 @@ export function useWebDAV() {
     }
   }, [config, getAuthHeader, listFiles, currentPath]);
 
-  const deleteMultipleFiles = useCallback(async (filePaths: string[]) => {
-    if (!config || filePaths.length === 0) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const baseUrl = config.url.replace(/\/$/, '');
-      const auth = getAuthHeader(config);
-
-      const results = await Promise.all(filePaths.map(async path => {
-        const url = baseUrl + path;
-        try {
-          const response = await fetch(url, { method: 'DELETE', headers: { 'Authorization': auth } });
-          return response.ok;
-        } catch {
-          return false;
-        }
-      }));
-
-      const failedCount = results.filter(r => !r).length;
-      if (failedCount > 0) {
-        throw new Error(`Failed to delete ${failedCount} file(s)`);
-      }
-
-      await listFiles(currentPath);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Delete failed';
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [config, getAuthHeader, listFiles, currentPath]);
-
   const getFileBlob = useCallback(async (filePath: string): Promise<Blob | null> => {
     if (!config) return null;
     try {
@@ -387,7 +355,6 @@ export function useWebDAV() {
     listFiles,
     uploadFile,
     deleteFile,
-    deleteMultipleFiles,
     getFileBlob,
     createDirectory,
     saveMetadata,
