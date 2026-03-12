@@ -9,7 +9,7 @@ import { BookPreview } from './BookPreview';
 import {
   WebDAVFile, Category, ViewMode, FileFilter, SortBy, SortOrder,
   getFileCategory, formatFileSize, formatDate, getFileExtension,
-  getFormatInfo, isBookFormat, parseFilenameMetadata,
+  getFormatInfo, isBookFormat, parseFilenameMetadata, BookMetadata,
 } from '../types';
 
 interface LibraryProps {

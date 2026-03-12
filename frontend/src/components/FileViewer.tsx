@@ -9,7 +9,7 @@ import JSZip from 'jszip';
 import {
   WebDAVFile, Category, formatFileSize, formatDate, getFileExtension,
   getFileCategory, getMimeType, isViewableInBrowser, isBookFormat,
-  getFormatInfo, parseFilenameMetadata, FileFilter,
+  getFormatInfo, parseFilenameMetadata, FileFilter, BookMetadata,
 } from '../types';
 
 interface FileViewerProps {
@@ -32,7 +32,7 @@ function getCategoryIcon(cat: FileFilter) {
   }
 }
 
-export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCategory }: FileViewerProps) {
+export function FileViewer({ file, onClose, getFileBlob, categories, onAssignCategory, storedMetadata }: FileViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);

@@ -6,7 +6,7 @@ import { Library } from './components/Library';
 import { FileViewer } from './components/FileViewer';
 import { CategoryView } from './components/CategoryView';
 import { SetupGuide } from './components/SetupGuide';
-import { WebDAVFile, Category, AppView, ViewMode, FileFilter, ConnectionConfig, DEFAULT_CATEGORIES } from './types';
+import { WebDAVFile, Category, AppView, ViewMode, FileFilter, ConnectionConfig, DEFAULT_CATEGORIES, BookMetadata } from './types';
 
 export function App() {
   const webdav = useWebDAV();

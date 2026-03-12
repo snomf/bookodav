@@ -103,6 +103,7 @@ export function ConnectForm({ onConnect, loading, error, onSetup }: ConnectFormP
                         value={username}
                         onChange={e => setUsername(e.target.value)}
                         placeholder="Username"
+                        autoComplete="username"
                         className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/80 border border-slate-700/50 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
                         required
                       />
@@ -117,6 +118,7 @@ export function ConnectForm({ onConnect, loading, error, onSetup }: ConnectFormP
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                         placeholder="Password"
+                        autoComplete="current-password"
                         className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/80 border border-slate-700/50 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
                         required
                       />
